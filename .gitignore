@@ -1,0 +1,17 @@
+.vscode/
+Assembly-CSharp-Editor.csproj
+Assembly-CSharp.csproj
+Library/
+Logs/
+SpringyMeshes.sln
+Assets/TutorialInfo/
+Assets/TutorialInfo.meta
+UserSettings/
+Temp/
+obj/
+
+*.tmp
+*.swp
+*.swo
+.DS_Store
+*.log
