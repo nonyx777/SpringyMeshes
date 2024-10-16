@@ -10,12 +10,16 @@ public class SpringyMesh : MonoBehaviour
     Vector3[] prevPos;
     Vector3[] velocity;
     Vector3[] acceleration;
+    Vector3[] offsetVec;
     List<Cell> cells = new List<Cell>();
 
     public int size;
     public float space;
-    public float distance;
     public float centerDistance;
+    public float diagonalDistance;
+    public float stiffness;
+    public float damping;
+    public int iteration;
 
     public class Cell
     {
@@ -52,104 +56,126 @@ public class SpringyMesh : MonoBehaviour
         Array.Resize(ref prevPos, (size * size * size));
         Array.Resize(ref velocity, (size * size * size));
         Array.Resize(ref acceleration, (size * size * size));
+        Array.Resize(ref offsetVec, (size * size * size));
 
         assignToEmpty(ref vertices);
         assignToEmpty(ref prevPos);
         assignToEmpty(ref velocity);
         assignToEmpty(ref acceleration);
+        assignToEmpty(ref offsetVec);
 
         createGrid(size, space);
         attachCells();
 
         int a = cells[0].a;
         Vector3 p = cells[0].position;
-        distance = Vector3.Magnitude(vertices[a] - p);
+        centerDistance = Vector3.Magnitude(vertices[a] - p);
+
+        int d = cells[0].d;
+        diagonalDistance = Vector3.Magnitude(vertices[a] - vertices[d]);
     }
 
     // Update is called once per frame
-    void FixedUpdate()
+    void Update()
     {
-        Vector3 force = Vector3.zero;
-        foreach(Cell cell in cells)
+        assignToEmpty(ref offsetVec);
+        assignToEmpty(ref acceleration);
+
+        Vector3 mouse = Input.mousePosition;
+        Ray castPoint = Camera.main.ScreenPointToRay(mouse);
+        RaycastHit hit;
+        if(Physics.Raycast(castPoint, out hit, Mathf.Infinity))
         {
-            velocity[cell.a] += force * Time.fixedDeltaTime;
-            velocity[cell.b] += force * Time.fixedDeltaTime;
-            velocity[cell.c] += force * Time.fixedDeltaTime;
-            velocity[cell.d] += force * Time.fixedDeltaTime;
-            velocity[cell.e] += force * Time.fixedDeltaTime;
-            velocity[cell.f] += force * Time.fixedDeltaTime;
-            velocity[cell.g] += force * Time.fixedDeltaTime;
-            velocity[cell.h] += force * Time.fixedDeltaTime;
+            applyDistanceConstraint(hit.point, Time.deltaTime);
         }
 
-        foreach(Cell cell in cells)
+        Vector3 gravity = new Vector3(0, -9.8f, 0); // Gravity constant (-9.81 m/s²)
+
+        for(int i = 0; i < prevPos.Length; i++)
         {
-            prevPos[cell.a] = vertices[cell.a];
-            prevPos[cell.b] = vertices[cell.b];
-            prevPos[cell.c] = vertices[cell.c];
-            prevPos[cell.d] = vertices[cell.d];
-            prevPos[cell.e] = vertices[cell.e];
-            prevPos[cell.f] = vertices[cell.f];
-            prevPos[cell.g] = vertices[cell.g];
-            prevPos[cell.h] = vertices[cell.h];
+            prevPos[i] = vertices[i];
         }
 
-        foreach(Cell cell in cells)
-        {
-            vertices[cell.a] += velocity[cell.a] * 0.1F * Time.fixedDeltaTime;
-            vertices[cell.b] += velocity[cell.b] * 0.1F * Time.fixedDeltaTime;
-            vertices[cell.c] += velocity[cell.c] * 0.1F * Time.fixedDeltaTime;
-            vertices[cell.d] += velocity[cell.d] * 0.1F * Time.fixedDeltaTime;
-            vertices[cell.e] += velocity[cell.e] * 0.1F * Time.fixedDeltaTime;
-            vertices[cell.f] += velocity[cell.f] * 0.1F * Time.fixedDeltaTime;
-            vertices[cell.g] += velocity[cell.g] * 0.1F * Time.fixedDeltaTime;
-            vertices[cell.h] += velocity[cell.h] * 0.1F * Time.fixedDeltaTime;
-        }
+        // Apply gravity to each vertex
+        // for (int i = 0; i < vertices.Length; i++)
+        // {
+        //     // Apply gravity to the acceleration of each vertex
+        //     acceleration[i] = gravity;
 
-        for(int i = 0; i < 1; i++)
-        {
+        //     velocity[i] += acceleration[i] * Time.deltaTime;
+        //     vertices[i] += velocity[i] * Time.deltaTime;
+        // }
 
+        float substep = Time.deltaTime;
+
+        for(int i = 0; i < iteration; i++)
+        {
             foreach(Cell cell in cells)
             {
-                applyDistanceConstraint(cell.a, cell.b, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.a, cell.c, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.a, cell.e, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.a, cell.position, Time.fixedDeltaTime, distance);
+                applyDistanceConstraint(cell.a, cell.b, substep, space);
+                applyDistanceConstraint(cell.a, cell.c, substep, space);
+                applyDistanceConstraint(cell.a, cell.e, substep, space);
+                // applyDistanceConstraint(cell.a, cell.position, substep, centerDistance);
 
-                applyDistanceConstraint(cell.b, cell.d, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.b, cell.f, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.b, cell.position, Time.fixedDeltaTime, distance);
+                applyDistanceConstraint(cell.b, cell.d, substep, space);
+                applyDistanceConstraint(cell.b, cell.f, substep, space);
+                // applyDistanceConstraint(cell.b, cell.position, substep, centerDistance);
 
-                applyDistanceConstraint(cell.c, cell.d, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.c, cell.g, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.c, cell.position, Time.fixedDeltaTime, space);
+                applyDistanceConstraint(cell.c, cell.d, substep, space);
+                applyDistanceConstraint(cell.c, cell.g, substep, space);
+                // applyDistanceConstraint(cell.c, cell.position, substep, space);
 
-                applyDistanceConstraint(cell.d, cell.h, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.d, cell.position, Time.fixedDeltaTime, distance);
+                applyDistanceConstraint(cell.d, cell.h, substep, space);
+                // applyDistanceConstraint(cell.d, cell.position, substep, centerDistance);
 
-                applyDistanceConstraint(cell.e, cell.g, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.e, cell.f, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.e, cell.position, Time.fixedDeltaTime, distance);
+                applyDistanceConstraint(cell.e, cell.g, substep, space);
+                applyDistanceConstraint(cell.e, cell.f, substep, space);
+                // applyDistanceConstraint(cell.e, cell.position, substep, centerDistance);
 
-                applyDistanceConstraint(cell.f, cell.h, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.f, cell.position, Time.fixedDeltaTime, distance);
+                applyDistanceConstraint(cell.f, cell.h, substep, space);
+                // applyDistanceConstraint(cell.f, cell.position, substep, centerDistance);
 
-                applyDistanceConstraint(cell.g, cell.h, Time.fixedDeltaTime, space);
-                applyDistanceConstraint(cell.g, cell.position, Time.fixedDeltaTime, distance);
+                applyDistanceConstraint(cell.g, cell.h, substep, space);
+                // applyDistanceConstraint(cell.g, cell.position, substep, centerDistance);
+
+                // applyDistanceConstraint(cell.h, cell.position, substep, centerDistance);
+
+                applyDistanceConstraint(cell.a, cell.h, substep, diagonalDistance);
+                applyDistanceConstraint(cell.b, cell.g, substep, diagonalDistance);
+                applyDistanceConstraint(cell.c, cell.f, substep, diagonalDistance);
+                applyDistanceConstraint(cell.e, cell.d, substep, diagonalDistance);
+
+                applyDistanceConstraint(cell.a, cell.d, substep, diagonalDistance);
+                applyDistanceConstraint(cell.c, cell.b, substep, diagonalDistance);
+                applyDistanceConstraint(cell.c, cell.e, substep, diagonalDistance);
+                applyDistanceConstraint(cell.a, cell.g, substep, diagonalDistance);
+                applyDistanceConstraint(cell.c, cell.h, substep, diagonalDistance);
+                applyDistanceConstraint(cell.d, cell.g, substep, diagonalDistance);
+                applyDistanceConstraint(cell.d, cell.f, substep, diagonalDistance);
+                applyDistanceConstraint(cell.b, cell.h, substep, diagonalDistance);
+                applyDistanceConstraint(cell.e, cell.h, substep, diagonalDistance);
+                applyDistanceConstraint(cell.f, cell.g, substep, diagonalDistance);
+                applyDistanceConstraint(cell.a, cell.f, substep, diagonalDistance);
+                applyDistanceConstraint(cell.b, cell.e, substep, diagonalDistance);                
+            }
+            for(int j = 0; j < vertices.Length; j++)
+            {
+                vertices[j] += offsetVec[j] * Time.deltaTime;
+
+                // if (vertices[j].y < -10F) // Ground level at y = -10
+                // {
+                //     vertices[j] = new Vector3(vertices[j].x, -10F, vertices[j].z);
+                //     // prevPos[j] = new Vector3(vertices[j].x, -20F, vertices[j].z);
+                //     // velocity[j] = new Vector3(velocity[j].x, -velocity[j].y, velocity[j].z); // Reflect velocity on ground hit
+                // }
             }
         }
 
-        foreach(Cell cell in cells)
-        {
-            velocity[cell.a] = (vertices[cell.a] - prevPos[cell.a]) / Time.fixedDeltaTime;
-            velocity[cell.b] = (vertices[cell.b] - prevPos[cell.b]) / Time.fixedDeltaTime;
-            velocity[cell.c] = (vertices[cell.c] - prevPos[cell.c]) / Time.fixedDeltaTime;
-            velocity[cell.d] = (vertices[cell.d] - prevPos[cell.d]) / Time.fixedDeltaTime;
-            velocity[cell.e] = (vertices[cell.e] - prevPos[cell.e]) / Time.fixedDeltaTime;
-            velocity[cell.f] = (vertices[cell.f] - prevPos[cell.f]) / Time.fixedDeltaTime;
-            velocity[cell.g] = (vertices[cell.g] - prevPos[cell.g]) / Time.fixedDeltaTime;
-            velocity[cell.h] = (vertices[cell.h] - prevPos[cell.h]) / Time.fixedDeltaTime;
-        }
+        // for(int i = 0; i < velocity.Length; i++)
+        // {
+        //     velocity[i] += (vertices[i] - prevPos[i]);
+        // }
+
 
         foreach(Cell cell in cells)
         {
@@ -165,7 +191,7 @@ public class SpringyMesh : MonoBehaviour
         float force = currDis - 0f;
         Vector3 forceVector = force * direction.normalized;
 
-        vertices[0] -= forceVector * deltaTime;
+        offsetVec[0] -= 5 * forceVector * deltaTime;
     }
 
     void applyDistanceConstraint(int v1, int v2, float deltaTime, float distance_)
@@ -176,11 +202,16 @@ public class SpringyMesh : MonoBehaviour
         Vector3 direction = p2 - p1;
         float currDis = direction.magnitude;
 
-        float force = currDis - distance_;
+        float force = 0.5F * (currDis - distance_);
         Vector3 forceVector = force * direction.normalized;
 
-        vertices[v1] += (0.5F * forceVector) * deltaTime;
-        vertices[v2] -= (0.5F * forceVector) * deltaTime;
+        // Vector3 relativeVelocity = velocity[v1] - velocity[v2];
+        // Vector3 dampingForce = -damping * relativeVelocity;
+
+        // Vector3 totalForce = forceVector + dampingForce;
+
+        offsetVec[v1] += forceVector * deltaTime;
+        offsetVec[v2] -= forceVector * deltaTime;
     }
 
     void applyDistanceConstraint(int v1, Vector3 p, float deltaTime, float distance_)
@@ -193,7 +224,7 @@ public class SpringyMesh : MonoBehaviour
         float force = currDis - distance_;
         Vector3 forceVector = force * direction.normalized;
 
-        vertices[v1] += forceVector * deltaTime;
+        offsetVec[v1] += forceVector;
     }
 
     void OnDrawGizmos()
@@ -220,6 +251,13 @@ public class SpringyMesh : MonoBehaviour
             array[i] = 0f;
         }
     }
+    void assignToEmpty(ref Boolean[] array)
+    {
+        for (int i = 0; i < array.Length; i++)
+        {
+            array[i] = false;
+        }
+    }
     void assignToEmpty(ref Vector3[] array)
     {
         for (int i = 0; i < array.Length; i++)
@@ -235,6 +273,14 @@ public class SpringyMesh : MonoBehaviour
         }
     }
     void assignToValue(ref Vector3[] array, Vector3 value)
+    {
+        for (int i = 0; i < array.Length; i++)
+        {
+            array[i] += value;
+        }
+    }
+
+    void assignToValue(ref Boolean[] array, Boolean value)
     {
         for (int i = 0; i < array.Length; i++)
         {
