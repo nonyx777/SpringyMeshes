@@ -630,12 +630,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   size: 5
   space: 5
-  centerDistance: 0
+  tipDistance: 0
   diagonalDistance: 0
-  stiffness: 30
-  damping: 4
   iteration: 30
   timestep: 0.2
+  pullStrength: 5
 --- !u!4 &1569526019
 Transform:
   m_ObjectHideFlags: 0

@@ -15,13 +15,12 @@ public class SpringyMesh : MonoBehaviour
 
     public int size;
     public float space;
-    public float centerDistance;
+    public float tipDistance;
     public float diagonalDistance;
-    public float stiffness;
-    public float damping;
-    [Range(2, 100)]
+    [Range(1, 100)]
     public int iteration;
     public float timestep;
+    public float pullStrength;
     Vector3 gravity = new Vector3(0, -9.8f, 0);
 
 
@@ -72,11 +71,11 @@ public class SpringyMesh : MonoBehaviour
         attachCells();
 
         int a = cells[0].a;
-        Vector3 p = cells[0].position;
-        centerDistance = Vector3.Magnitude(vertices[a] - p);
-
         int d = cells[0].d;
         diagonalDistance = Vector3.Magnitude(vertices[a] - vertices[d]);
+        int top = getIndex(0, size - 1, 0, size);
+        int bottom = getIndex(0, 0, 0, size);
+        tipDistance = Vector3.Magnitude(vertices[top] - vertices[bottom]);
     }
 
     // Update is called once per frame
@@ -150,6 +149,38 @@ public class SpringyMesh : MonoBehaviour
                 applyDistanceConstraint(cell.f, cell.g, timestep, diagonalDistance);
                 applyDistanceConstraint(cell.b, cell.e, timestep, diagonalDistance);
             }
+            //applying constriant for the polar opposites on the y axis;
+            for (int z = 0; z < size; z++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    int a = getIndex(x, 0, z, size);
+                    int b = getIndex(x, size - 1, z, size);
+                    applyDistanceConstraint(a, b, timestep, tipDistance);
+                }
+            }
+            //applying constriant for the polar opposites on the x axis;
+            for (int z = 0; z < size; z++)
+            {
+                for (int y = 0; y < size; y++)
+                {
+                    int a = getIndex(0, y, z, size);
+                    int b = getIndex(size - 1, y, z, size);
+                    applyDistanceConstraint(a, b, timestep, tipDistance);
+                }
+            }
+            //applying constriant for the polar opposites on the z axis;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    int a = getIndex(x, y, 0, size);
+                    int b = getIndex(x, y, size - 1, size);
+                    applyDistanceConstraint(a, b, timestep, tipDistance);
+                }
+            }
+
+            //under the floor
             for (int j = 0; j < vertices.Length; j++)
             {
                 if (vertices[j].y < -10F) // Ground level at y = -10
@@ -181,7 +212,7 @@ public class SpringyMesh : MonoBehaviour
         float force = currDis - 0f;
         Vector3 forceVector = force * direction.normalized;
 
-        vertices[(size * size * size) - 1] -= 10 * forceVector * deltaTime;
+        vertices[(size * size * size) - 1] -= pullStrength * forceVector * deltaTime;
     }
 
     void applyDistanceConstraint(int v1, int v2, float deltaTime, float distance_)
