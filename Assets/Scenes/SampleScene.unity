@@ -634,7 +634,8 @@ MonoBehaviour:
   diagonalDistance: 0
   stiffness: 30
   damping: 4
-  iteration: 40
+  iteration: 30
+  timestep: 0.2
 --- !u!4 &1569526019
 Transform:
   m_ObjectHideFlags: 0

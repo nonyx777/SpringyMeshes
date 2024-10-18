@@ -19,7 +19,11 @@ public class SpringyMesh : MonoBehaviour
     public float diagonalDistance;
     public float stiffness;
     public float damping;
+    [Range(2, 100)]
     public int iteration;
+    public float timestep;
+    Vector3 gravity = new Vector3(0, -9.8f, 0);
+
 
     public class Cell
     {
@@ -84,100 +88,86 @@ public class SpringyMesh : MonoBehaviour
         Vector3 mouse = Input.mousePosition;
         Ray castPoint = Camera.main.ScreenPointToRay(mouse);
         RaycastHit hit;
-        if(Physics.Raycast(castPoint, out hit, Mathf.Infinity))
+        if (Physics.Raycast(castPoint, out hit, Mathf.Infinity))
         {
-            applyDistanceConstraint(hit.point, Time.deltaTime);
+            applyDistanceConstraint(hit.point, timestep);
         }
 
-        Vector3 gravity = new Vector3(0, -9.8f, 0); // Gravity constant (-9.81 m/s²)
-
-        for(int i = 0; i < prevPos.Length; i++)
+        for (int i = 0; i < prevPos.Length; i++)
         {
             prevPos[i] = vertices[i];
         }
 
         // Apply gravity to each vertex
-        // for (int i = 0; i < vertices.Length; i++)
-        // {
-        //     // Apply gravity to the acceleration of each vertex
-        //     acceleration[i] = gravity;
-
-        //     velocity[i] += acceleration[i] * Time.deltaTime;
-        //     vertices[i] += velocity[i] * Time.deltaTime;
-        // }
-
-        float substep = Time.deltaTime;
-
-        for(int i = 0; i < iteration; i++)
+        for (int i = 0; i < vertices.Length; i++)
         {
-            foreach(Cell cell in cells)
-            {
-                applyDistanceConstraint(cell.a, cell.b, substep, space);
-                applyDistanceConstraint(cell.a, cell.c, substep, space);
-                applyDistanceConstraint(cell.a, cell.e, substep, space);
-                // applyDistanceConstraint(cell.a, cell.position, substep, centerDistance);
-
-                applyDistanceConstraint(cell.b, cell.d, substep, space);
-                applyDistanceConstraint(cell.b, cell.f, substep, space);
-                // applyDistanceConstraint(cell.b, cell.position, substep, centerDistance);
-
-                applyDistanceConstraint(cell.c, cell.d, substep, space);
-                applyDistanceConstraint(cell.c, cell.g, substep, space);
-                // applyDistanceConstraint(cell.c, cell.position, substep, space);
-
-                applyDistanceConstraint(cell.d, cell.h, substep, space);
-                // applyDistanceConstraint(cell.d, cell.position, substep, centerDistance);
-
-                applyDistanceConstraint(cell.e, cell.g, substep, space);
-                applyDistanceConstraint(cell.e, cell.f, substep, space);
-                // applyDistanceConstraint(cell.e, cell.position, substep, centerDistance);
-
-                applyDistanceConstraint(cell.f, cell.h, substep, space);
-                // applyDistanceConstraint(cell.f, cell.position, substep, centerDistance);
-
-                applyDistanceConstraint(cell.g, cell.h, substep, space);
-                // applyDistanceConstraint(cell.g, cell.position, substep, centerDistance);
-
-                // applyDistanceConstraint(cell.h, cell.position, substep, centerDistance);
-
-                applyDistanceConstraint(cell.a, cell.h, substep, diagonalDistance);
-                applyDistanceConstraint(cell.b, cell.g, substep, diagonalDistance);
-                applyDistanceConstraint(cell.c, cell.f, substep, diagonalDistance);
-                applyDistanceConstraint(cell.e, cell.d, substep, diagonalDistance);
-
-                applyDistanceConstraint(cell.a, cell.d, substep, diagonalDistance);
-                applyDistanceConstraint(cell.c, cell.b, substep, diagonalDistance);
-                applyDistanceConstraint(cell.c, cell.e, substep, diagonalDistance);
-                applyDistanceConstraint(cell.a, cell.g, substep, diagonalDistance);
-                applyDistanceConstraint(cell.c, cell.h, substep, diagonalDistance);
-                applyDistanceConstraint(cell.d, cell.g, substep, diagonalDistance);
-                applyDistanceConstraint(cell.d, cell.f, substep, diagonalDistance);
-                applyDistanceConstraint(cell.b, cell.h, substep, diagonalDistance);
-                applyDistanceConstraint(cell.e, cell.h, substep, diagonalDistance);
-                applyDistanceConstraint(cell.f, cell.g, substep, diagonalDistance);
-                applyDistanceConstraint(cell.a, cell.f, substep, diagonalDistance);
-                applyDistanceConstraint(cell.b, cell.e, substep, diagonalDistance);                
-            }
-            for(int j = 0; j < vertices.Length; j++)
-            {
-                vertices[j] += offsetVec[j] * Time.deltaTime;
-
-                // if (vertices[j].y < -10F) // Ground level at y = -10
-                // {
-                //     vertices[j] = new Vector3(vertices[j].x, -10F, vertices[j].z);
-                //     // prevPos[j] = new Vector3(vertices[j].x, -20F, vertices[j].z);
-                //     // velocity[j] = new Vector3(velocity[j].x, -velocity[j].y, velocity[j].z); // Reflect velocity on ground hit
-                // }
-            }
+            acceleration[i] = gravity;
+            velocity[i] += acceleration[i] * timestep;
+            vertices[i] += velocity[i] * timestep;
         }
 
-        // for(int i = 0; i < velocity.Length; i++)
-        // {
-        //     velocity[i] += (vertices[i] - prevPos[i]);
-        // }
+        for (int i = 0; i < iteration; i++)
+        {
+            foreach (Cell cell in cells)
+            {
+                //front face
+                applyDistanceConstraint(cell.a, cell.b, timestep, space);
+                applyDistanceConstraint(cell.a, cell.c, timestep, space);
+                applyDistanceConstraint(cell.b, cell.d, timestep, space);
+                applyDistanceConstraint(cell.c, cell.d, timestep, space);
+
+                //back face
+                applyDistanceConstraint(cell.e, cell.f, timestep, space);
+                applyDistanceConstraint(cell.e, cell.g, timestep, space);
+                applyDistanceConstraint(cell.f, cell.h, timestep, space);
+                applyDistanceConstraint(cell.g, cell.h, timestep, space);
+
+                //front face with back face
+                applyDistanceConstraint(cell.a, cell.e, timestep, space);
+                applyDistanceConstraint(cell.b, cell.f, timestep, space);
+                applyDistanceConstraint(cell.c, cell.g, timestep, space);
+                applyDistanceConstraint(cell.d, cell.h, timestep, space);
+
+                //On the face diagonal
+                applyDistanceConstraint(cell.a, cell.d, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.e, cell.h, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.a, cell.g, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.b, cell.h, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.c, cell.h, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.a, cell.f, timestep, diagonalDistance);
+
+                //diagonal between front and back face
+                applyDistanceConstraint(cell.a, cell.h, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.b, cell.g, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.c, cell.f, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.e, cell.d, timestep, diagonalDistance);
+
+                //additional diagonal for a face
+                applyDistanceConstraint(cell.c, cell.b, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.c, cell.e, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.d, cell.g, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.d, cell.f, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.f, cell.g, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.b, cell.e, timestep, diagonalDistance);
+            }
+            for (int j = 0; j < vertices.Length; j++)
+            {
+                if (vertices[j].y < -10F) // Ground level at y = -10
+                {
+                    vertices[j] = new Vector3(vertices[j].x, -10F, vertices[j].z);
+                    prevPos[j] = new Vector3(vertices[j].x, -10F, vertices[j].z);
+                }
+            }
+
+        }
+
+        for (int i = 0; i < velocity.Length; i++)
+        {
+            velocity[i] = (vertices[i] - prevPos[i]);
+        }
 
 
-        foreach(Cell cell in cells)
+        foreach (Cell cell in cells)
         {
             cell.setPosition(ref vertices);
         }
@@ -191,7 +181,7 @@ public class SpringyMesh : MonoBehaviour
         float force = currDis - 0f;
         Vector3 forceVector = force * direction.normalized;
 
-        offsetVec[0] -= 5 * forceVector * deltaTime;
+        vertices[(size * size * size) - 1] -= 10 * forceVector * deltaTime;
     }
 
     void applyDistanceConstraint(int v1, int v2, float deltaTime, float distance_)
@@ -205,39 +195,21 @@ public class SpringyMesh : MonoBehaviour
         float force = 0.5F * (currDis - distance_);
         Vector3 forceVector = force * direction.normalized;
 
-        // Vector3 relativeVelocity = velocity[v1] - velocity[v2];
-        // Vector3 dampingForce = -damping * relativeVelocity;
-
-        // Vector3 totalForce = forceVector + dampingForce;
-
-        offsetVec[v1] += forceVector * deltaTime;
-        offsetVec[v2] -= forceVector * deltaTime;
-    }
-
-    void applyDistanceConstraint(int v1, Vector3 p, float deltaTime, float distance_)
-    {
-        Vector3 p1 = vertices[v1];
-
-        Vector3 direction = p - p1;
-        float currDis = direction.magnitude;
-
-        float force = currDis - distance_;
-        Vector3 forceVector = force * direction.normalized;
-
-        offsetVec[v1] += forceVector;
+        vertices[v1] += forceVector * deltaTime;
+        vertices[v2] -= forceVector * deltaTime;
     }
 
     void OnDrawGizmos()
     {
-        if(vertices == null || vertices.Count() < 1)
+        if (vertices == null || vertices.Count() < 1)
             return;
 
-        for(int i = 0; i < vertices.Count(); i++)
+        for (int i = 0; i < vertices.Count(); i++)
         {
             Gizmos.color = Color.green;
             Gizmos.DrawSphere(vertices[i], 1);
         }
-        foreach(Cell cell in cells)
+        foreach (Cell cell in cells)
         {
             Gizmos.color = Color.red;
             Gizmos.DrawSphere(cell.position, 0.5F);
@@ -291,11 +263,11 @@ public class SpringyMesh : MonoBehaviour
     void createGrid(int size, float space)
     {
         int index = 0;
-        for(int k = 0; k < size; k++)
+        for (int k = 0; k < size; k++)
         {
-            for(int j = 0; j < size; j++)
+            for (int j = 0; j < size; j++)
             {
-                for(int i = 0; i < size; i++)
+                for (int i = 0; i < size; i++)
                 {
                     index = getIndex(i, j, k, size);
                     vertices[index] = new Vector3(i, j, k) * space;
@@ -306,20 +278,20 @@ public class SpringyMesh : MonoBehaviour
 
     void attachCells()
     {
-        for(int k = 0; k < size-1; k++)
+        for (int k = 0; k < size - 1; k++)
         {
-            for(int j = 0; j < size-1; j++)
+            for (int j = 0; j < size - 1; j++)
             {
-                for(int i = 0; i < size-1; i++)
+                for (int i = 0; i < size - 1; i++)
                 {
                     int a = getIndex(i, j, k, size);
-                    int b = getIndex(i+1, j, k, size);
-                    int c = getIndex(i, j+1, k, size);
-                    int d = getIndex(i+1, j+1, k, size);
-                    int e = getIndex(i, j, k+1, size);
-                    int f = getIndex(i+1, j, k+1, size);
-                    int g = getIndex(i, j+1, k+1, size);
-                    int h = getIndex(i+1, j+1, k+1, size);
+                    int b = getIndex(i + 1, j, k, size);
+                    int c = getIndex(i, j + 1, k, size);
+                    int d = getIndex(i + 1, j + 1, k, size);
+                    int e = getIndex(i, j, k + 1, size);
+                    int f = getIndex(i + 1, j, k + 1, size);
+                    int g = getIndex(i, j + 1, k + 1, size);
+                    int h = getIndex(i + 1, j + 1, k + 1, size);
 
                     Cell cell = new Cell(a, b, c, d, e, f, g, h, ref vertices);
                     cells.Add(cell);
@@ -332,52 +304,4 @@ public class SpringyMesh : MonoBehaviour
     {
         return (i * size + j) * size + k;
     }
-
-    // void manifoldMesh(ref int[] traingles, ref Vector3[] vertices)
-    // {
-    //     List<int> t1 = new List<int>();
-    //     t1.Add(triangles[0]);
-    //     t1.Add(traingles[1]);
-    //     t1.Add(traingles[2]);
-    //     for (int i = 3; i < triangles.Length; i += 3)
-    //     {
-    //         int v1 = triangles[i];
-    //         int v2 = triangles[i + 1];
-    //         int v3 = triangles[i + 2];
-
-    //         foreach (int index in t1)
-    //         {
-    //             if (Vector3.Magnitude(vertices[index] - vertices[v1]) <= Mathf.Epsilon)
-    //             {
-    //                 v1 = index;
-    //             }
-    //             if (Vector3.Magnitude(vertices[index] - vertices[v2]) <= Mathf.Epsilon)
-    //             {
-    //                 v2 = index;
-    //             }
-    //             if (Vector3.Magnitude(vertices[index] - vertices[v3]) <= Mathf.Epsilon)
-    //             {
-    //                 v3 = index;
-    //             }
-    //         }
-
-    //         t1.Add(v1);
-    //         t1.Add(v2);
-    //         t1.Add(v3);
-    //     }
-    //     triangles = t1.ToArray();
-    //     int[] t2 = new int[triangles.Length];
-    //     for (int i = 0; i < triangles.Length; i++)
-    //     {
-    //         t2[i] = triangles[i];
-    //     }
-    //     Array.Sort(t2);
-    //     t2 = t2.Distinct().ToArray();
-    //     Vector3[] v = new Vector3[t2.Length];
-    //     for (int i = 0; i < v.Length; i++)
-    //     {
-    //         v[i] = vertices[t2[i]];
-    //     }
-    //     vertices = v;
-    // }
 }
