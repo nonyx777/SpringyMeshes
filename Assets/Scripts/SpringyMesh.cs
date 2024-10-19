@@ -11,7 +11,7 @@ public class SpringyMesh : MonoBehaviour
     Vector3[] velocity;
     Vector3[] acceleration;
     Vector3[] offsetVec;
-    List<Cell> cells = new List<Cell>();
+    Cell[] cells;
 
     public int size;
     public float space;
@@ -60,6 +60,7 @@ public class SpringyMesh : MonoBehaviour
         Array.Resize(ref velocity, (size * size * size));
         Array.Resize(ref acceleration, (size * size * size));
         Array.Resize(ref offsetVec, (size * size * size));
+        Array.Resize(ref cells, ((size-1) * (size-1) * (size-1)));
 
         assignToEmpty(ref vertices);
         assignToEmpty(ref prevPos);
@@ -76,6 +77,14 @@ public class SpringyMesh : MonoBehaviour
         int top = getIndex(0, size - 1, 0, size);
         int bottom = getIndex(0, 0, 0, size);
         tipDistance = Vector3.Magnitude(vertices[top] - vertices[bottom]);
+
+        Debug.Log($"A point --> {vertices[cells[1].a]}");
+        Debug.Log($"Cell position --> {cells[1].position}");
+        Vector3 tempo = new Vector3(Mathf.Floor(cells[1].position.x / size), Mathf.Floor(cells[1].position.y / size), Mathf.Floor(cells[1].position.z / size));
+        Debug.Log($"Cell grid location --> {tempo}");
+
+        Debug.Log($"Vertice size --> {vertices.Length}");
+        Debug.Log($"Cell size --> {cells.Length}");
     }
 
     // Update is called once per frame
@@ -232,7 +241,7 @@ public class SpringyMesh : MonoBehaviour
 
     void OnDrawGizmos()
     {
-        if (vertices == null || vertices.Count() < 1)
+        if (vertices == null || vertices.Count() < 1 || cells == null || cells.Count() < 1)
             return;
 
         for (int i = 0; i < vertices.Count(); i++)
@@ -240,10 +249,10 @@ public class SpringyMesh : MonoBehaviour
             Gizmos.color = Color.green;
             Gizmos.DrawSphere(vertices[i], 1);
         }
-        foreach (Cell cell in cells)
+        for (int i = 0; i < cells.Count(); i++)
         {
             Gizmos.color = Color.red;
-            Gizmos.DrawSphere(cell.position, 0.5F);
+            Gizmos.DrawSphere(cells[i].position, 0.5F);
         }
     }
 
@@ -325,7 +334,7 @@ public class SpringyMesh : MonoBehaviour
                     int h = getIndex(i + 1, j + 1, k + 1, size);
 
                     Cell cell = new Cell(a, b, c, d, e, f, g, h, ref vertices);
-                    cells.Add(cell);
+                    cells[getIndex(i, j, k, size-1)] = cell;
                 }
             }
         }
