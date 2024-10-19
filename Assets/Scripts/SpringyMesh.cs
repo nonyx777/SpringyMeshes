@@ -77,14 +77,6 @@ public class SpringyMesh : MonoBehaviour
         int top = getIndex(0, size - 1, 0, size);
         int bottom = getIndex(0, 0, 0, size);
         tipDistance = Vector3.Magnitude(vertices[top] - vertices[bottom]);
-
-        Debug.Log($"A point --> {vertices[cells[1].a]}");
-        Debug.Log($"Cell position --> {cells[1].position}");
-        Vector3 tempo = new Vector3(Mathf.Floor(cells[1].position.x / size), Mathf.Floor(cells[1].position.y / size), Mathf.Floor(cells[1].position.z / size));
-        Debug.Log($"Cell grid location --> {tempo}");
-
-        Debug.Log($"Vertice size --> {vertices.Length}");
-        Debug.Log($"Cell size --> {cells.Length}");
     }
 
     // Update is called once per frame
@@ -318,6 +310,7 @@ public class SpringyMesh : MonoBehaviour
 
     void attachCells()
     {
+        int index = 0;
         for (int k = 0; k < size - 1; k++)
         {
             for (int j = 0; j < size - 1; j++)
@@ -334,7 +327,8 @@ public class SpringyMesh : MonoBehaviour
                     int h = getIndex(i + 1, j + 1, k + 1, size);
 
                     Cell cell = new Cell(a, b, c, d, e, f, g, h, ref vertices);
-                    cells[getIndex(i, j, k, size-1)] = cell;
+                    cells[index] = cell;
+                    index++;
                 }
             }
         }
