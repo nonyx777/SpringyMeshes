@@ -12,6 +12,11 @@ public class SpringyMesh : MonoBehaviour
     Vector3[] acceleration;
     Vector3[] offsetVec;
     Cell[] cells;
+    public GameObject meshObject;
+    Mesh mesh;
+    Vector3[] meshVertices;
+    MeshGrid[] meshGrids;
+    Vector3[] meshV;
 
     public int size;
     public float space;
@@ -22,7 +27,6 @@ public class SpringyMesh : MonoBehaviour
     public float timestep;
     public float pullStrength;
     Vector3 gravity = new Vector3(0, -9.8f, 0);
-
 
     public class Cell
     {
@@ -49,6 +53,47 @@ public class SpringyMesh : MonoBehaviour
         }
     }
 
+    public class MeshGrid
+    {
+        public int meshVertex, cellIndex;
+        float u, v, w; // values for triliniear interpolation
+
+        public MeshGrid(int meshVertex, int cellIndex, float u, float v, float w)
+        {
+            this.meshVertex = meshVertex;
+            this.cellIndex = cellIndex;
+            this.u = 0F;
+            this.v = 0F;
+            this.w = 0F;
+        }
+
+        public void maintainPosition(ref Cell[] cells, ref Vector3[] vertices, ref Vector3[] meshVertices)
+        {
+            Vector3 a = vertices[cells[cellIndex].a];
+            Vector3 b = vertices[cells[cellIndex].b];
+            Vector3 c = vertices[cells[cellIndex].c];
+            Vector3 d = vertices[cells[cellIndex].d];
+            Vector3 e = vertices[cells[cellIndex].e];
+            Vector3 f = vertices[cells[cellIndex].f];
+            Vector3 g = vertices[cells[cellIndex].g];
+            Vector3 h = vertices[cells[cellIndex].h];
+
+            meshVertices[this.meshVertex] = (1 - u) * (1 - v) * (1 - w) * a + u * (1 - v) * (1 - w) * b + (1 - u) * v * (1 - w) * c + u * v * (1 - w) * d + (1 - u) * (1 - v) * w * e + u * (1 - v) * w * f + (1 - u) * v * w * g + u * v * w * h;
+        }
+
+        public void getRelativePosition(int cellIndex, ref Cell[] cells, ref Vector3[] vertices, ref Vector3[] meshVertices)
+        {
+            Vector3 a = vertices[cells[cellIndex].a];
+            Vector3 b = vertices[cells[cellIndex].b];
+            Vector3 c = vertices[cells[cellIndex].c];
+            Vector3 e = vertices[cells[cellIndex].e];
+
+            this.u = (meshVertices[this.meshVertex] - a).x / (b - a).x;
+            this.v = (meshVertices[this.meshVertex] - a).y / (c - a).y;
+            this.w = (meshVertices[this.meshVertex] - a).z / (e - a).z;
+        }
+    }
+
     void Awake()
     {
         Application.targetFrameRate = 60;
@@ -60,7 +105,7 @@ public class SpringyMesh : MonoBehaviour
         Array.Resize(ref velocity, (size * size * size));
         Array.Resize(ref acceleration, (size * size * size));
         Array.Resize(ref offsetVec, (size * size * size));
-        Array.Resize(ref cells, ((size-1) * (size-1) * (size-1)));
+        Array.Resize(ref cells, ((size - 1) * (size - 1) * (size - 1)));
 
         assignToEmpty(ref vertices);
         assignToEmpty(ref prevPos);
@@ -68,8 +113,29 @@ public class SpringyMesh : MonoBehaviour
         assignToEmpty(ref acceleration);
         assignToEmpty(ref offsetVec);
 
+        mesh = meshObject.GetComponent<MeshFilter>().mesh;
+
+        if (mesh != null)
+        {
+            Vector3[] localVertices = mesh.vertices;
+            Array.Resize(ref meshVertices, localVertices.Length);
+            Array.Resize(ref meshV, localVertices.Length);
+
+            for (int i = 0; i < localVertices.Length; i++)
+            {
+                meshVertices[i] = meshObject.transform.TransformPoint(localVertices[i]);
+            }
+            Array.Resize(ref meshGrids, meshVertices.Length);
+        }
+        else
+        {
+            Debug.LogError("Mesh or Object not assigned");
+        }
+
         createGrid(size, space);
         attachCells();
+
+        attachMeshVertexToGridCell();
 
         int a = cells[0].a;
         int d = cells[0].d;
@@ -102,6 +168,7 @@ public class SpringyMesh : MonoBehaviour
         for (int i = 0; i < vertices.Length; i++)
         {
             acceleration[i] = gravity;
+            // acceleration[i] = new Vector3(0f, 0f, 0f);
             velocity[i] += acceleration[i] * timestep;
             vertices[i] += velocity[i] * timestep;
         }
@@ -203,6 +270,18 @@ public class SpringyMesh : MonoBehaviour
         {
             cell.setPosition(ref vertices);
         }
+
+        foreach (MeshGrid meshGrid in meshGrids)
+        {
+            meshGrid.maintainPosition(ref cells, ref vertices, ref meshVertices);
+        }
+        for(int i = 0; i < meshVertices.Length; i++){
+            meshV[i] = meshObject.transform.InverseTransformPoint(meshVertices[i]);
+        }
+        meshObject.GetComponent<MeshFilter>().mesh.vertices = meshV;
+        meshObject.GetComponent<MeshFilter>().mesh.RecalculateNormals();
+        meshObject.GetComponent<MeshFilter>().mesh.RecalculateBounds();
+        // meshObject.GetComponent<MeshFilter>().mesh = mesh;
     }
 
     void applyDistanceConstraint(Vector3 target, float deltaTime)
@@ -239,13 +318,19 @@ public class SpringyMesh : MonoBehaviour
         for (int i = 0; i < vertices.Count(); i++)
         {
             Gizmos.color = Color.green;
-            Gizmos.DrawSphere(vertices[i], 1);
+            Gizmos.DrawSphere(vertices[i], 0.05f);
         }
-        for (int i = 0; i < cells.Count(); i++)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawSphere(cells[i].position, 0.5F);
-        }
+        // for (int i = 0; i < cells.Count(); i++)
+        // {
+        //     Gizmos.color = Color.red;
+        //     Gizmos.DrawSphere(cells[i].position, 0.05f);
+        // }
+
+        // foreach(MeshGrid meshGrid in meshGrids)
+        // {
+        //     Gizmos.color = Color.blue;
+        //     Gizmos.DrawSphere(meshVertices[meshGrid.meshVertex], 0.1f);
+        // }
     }
 
     void assignToEmpty(ref float[] array)
@@ -310,7 +395,6 @@ public class SpringyMesh : MonoBehaviour
 
     void attachCells()
     {
-        int index = 0;
         for (int k = 0; k < size - 1; k++)
         {
             for (int j = 0; j < size - 1; j++)
@@ -327,15 +411,35 @@ public class SpringyMesh : MonoBehaviour
                     int h = getIndex(i + 1, j + 1, k + 1, size);
 
                     Cell cell = new Cell(a, b, c, d, e, f, g, h, ref vertices);
+                    int index = getIndex(i, j, k, size - 1);
                     cells[index] = cell;
-                    index++;
                 }
             }
         }
     }
+    void attachMeshVertexToGridCell()
+    {
+        for (int i = 0; i < meshVertices.Length; i++)
+        {
+            //get the index of the cell that the meshVertex is in
+            Vector3 pos = meshVertices[i];
+            Vector3 gridLoc = new Vector3(Mathf.Floor(pos.x / space), Mathf.Floor(pos.y / space), Mathf.Floor(pos.z / space));
+            int index = getIndex((int)gridLoc.x, (int)gridLoc.y, (int)gridLoc.z, size - 1);
+            //get u, v and w
+            MeshGrid meshGrid = new MeshGrid(i, index, 0f, 0f, 0f);
+            if (index < 0 || index >= cells.Length)
+            {
+                Debug.LogError($"Invalid index: {index}, cells array size: {cells.Length}");
+                return;
+            }
 
+            meshGrid.getRelativePosition(index, ref cells, ref vertices, ref meshVertices);
+            meshGrids[i] = meshGrid;
+        }
+    }
     int getIndex(int i, int j, int k, int size)
     {
         return (i * size + j) * size + k;
     }
+
 }
