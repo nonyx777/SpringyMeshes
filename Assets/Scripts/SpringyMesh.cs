@@ -20,9 +20,14 @@ public class SpringyMesh : MonoBehaviour
     Vector3[] meshV;
 
     public int size;
-    public float space;
-    public float tipDistance;
-    public float diagonalDistance;
+    public float spaceX;
+    public float spaceY;
+    public float spaceZ;
+    public float tipDistanceX;
+    public float tipDistanceY;
+    public float tipDistanceZ;
+    public float diagonalDistance1;
+    public float diagonalDistance2;
     [Range(1, 100)]
     public int iteration;
     public float timestep;
@@ -30,7 +35,7 @@ public class SpringyMesh : MonoBehaviour
     Vector3 gravity = new Vector3(0, -9.8f, 0);
 
     Vector3 minX, maxX, minY, maxY, minZ, maxZ;
-    float maxDistance;
+    float maxDistance, distanceX, distanceY, distanceZ;
 
     public class Cell
     {
@@ -145,24 +150,30 @@ public class SpringyMesh : MonoBehaviour
         getMax(ref originalMeshVertices, ref maxY, 1);
         getMax(ref originalMeshVertices, ref maxZ, 2);
 
-        getMaxDistance(minX, maxX, minY, maxY, minZ, maxZ, ref maxDistance);
-        Debug.Log(maxDistance);
+        getMaxDistance(minX, maxX, minY, maxY, minZ, maxZ, ref maxDistance, ref distanceX, ref distanceY, ref distanceZ);
 
-        space = maxDistance / size;
-        Debug.Log(space);
+        spaceX = distanceX / size;
+        spaceY = distanceY / size;
+        spaceZ = distanceZ / size;
 
-        createGrid((int)maxDistance, size, space);
+        createGrid(distanceX, distanceY, distanceZ, size, spaceX, spaceY, spaceZ);
         attachCells();
 
         //getting additional distance constraints for the points that make up the cells and grid
         int a = cells[0].a;
         int d = cells[0].d;
-        diagonalDistance = Vector3.Magnitude(vertices[a] - vertices[d]);
+        int h = cells[0].h;
+        diagonalDistance1 = Vector3.Magnitude(vertices[a] - vertices[d]);
+        diagonalDistance2 = Vector3.Magnitude(vertices[a] - vertices[h]);
+        int origin = getIndex(0, 0, 0, size);
         int top = getIndex(0, size - 1, 0, size);
-        int bottom = getIndex(0, 0, 0, size);
-        tipDistance = Vector3.Magnitude(vertices[top] - vertices[bottom]);
-
-        // attachMeshVertexToGridCell();
+        tipDistanceY = Vector3.Magnitude(vertices[top] - vertices[origin]);
+        int right = getIndex(size - 1, 0, 0, size);
+        tipDistanceX = Vector3.Magnitude(vertices[right] - vertices[origin]);
+        int front = getIndex(0, 0, size - 1, size);
+        tipDistanceZ = Vector3.Magnitude(vertices[front] - vertices[origin]);
+        
+        attachMeshVertexToGridCell();
     }
 
     // Update is called once per frame
@@ -171,13 +182,13 @@ public class SpringyMesh : MonoBehaviour
         assignToEmpty(ref offsetVec);
         assignToEmpty(ref acceleration);
 
-        Vector3 mouse = Input.mousePosition;
-        Ray castPoint = Camera.main.ScreenPointToRay(mouse);
-        RaycastHit hit;
-        if (Physics.Raycast(castPoint, out hit, Mathf.Infinity))
-        {
-            applyDistanceConstraint(hit.point, timestep);
-        }
+        // Vector3 mouse = Input.mousePosition;
+        // Ray castPoint = Camera.main.ScreenPointToRay(mouse);
+        // RaycastHit hit;
+        // if (Physics.Raycast(castPoint, out hit, Mathf.Infinity))
+        // {
+        //     applyDistanceConstraint(hit.point, timestep);
+        // }
 
         for (int i = 0; i < prevPos.Length; i++)
         {
@@ -198,42 +209,42 @@ public class SpringyMesh : MonoBehaviour
             foreach (Cell cell in cells)
             {
                 //front face
-                applyDistanceConstraint(cell.a, cell.b, timestep, space);
-                applyDistanceConstraint(cell.a, cell.c, timestep, space);
-                applyDistanceConstraint(cell.b, cell.d, timestep, space);
-                applyDistanceConstraint(cell.c, cell.d, timestep, space);
+                applyDistanceConstraint(cell.a, cell.b, timestep, spaceX);
+                applyDistanceConstraint(cell.a, cell.c, timestep, spaceY);
+                applyDistanceConstraint(cell.b, cell.d, timestep, spaceY);
+                applyDistanceConstraint(cell.c, cell.d, timestep, spaceX);
 
                 //back face
-                applyDistanceConstraint(cell.e, cell.f, timestep, space);
-                applyDistanceConstraint(cell.e, cell.g, timestep, space);
-                applyDistanceConstraint(cell.f, cell.h, timestep, space);
-                applyDistanceConstraint(cell.g, cell.h, timestep, space);
+                applyDistanceConstraint(cell.e, cell.f, timestep, spaceX);
+                applyDistanceConstraint(cell.e, cell.g, timestep, spaceY);
+                applyDistanceConstraint(cell.f, cell.h, timestep, spaceY);
+                applyDistanceConstraint(cell.g, cell.h, timestep, spaceX);
 
                 //On the face diagonal
-                applyDistanceConstraint(cell.a, cell.d, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.e, cell.h, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.a, cell.g, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.b, cell.h, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.c, cell.h, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.a, cell.f, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.a, cell.d, timestep, diagonalDistance1);
+                applyDistanceConstraint(cell.e, cell.h, timestep, diagonalDistance1);
+                applyDistanceConstraint(cell.a, cell.g, timestep, diagonalDistance1);
+                applyDistanceConstraint(cell.b, cell.h, timestep, diagonalDistance1);
+                applyDistanceConstraint(cell.c, cell.h, timestep, diagonalDistance1);
+                applyDistanceConstraint(cell.a, cell.f, timestep, diagonalDistance1);
                 //additional diagonal for a face
-                applyDistanceConstraint(cell.c, cell.b, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.c, cell.e, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.d, cell.g, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.d, cell.f, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.f, cell.g, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.b, cell.e, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.c, cell.b, timestep, diagonalDistance1);
+                applyDistanceConstraint(cell.c, cell.e, timestep, diagonalDistance1);
+                applyDistanceConstraint(cell.d, cell.g, timestep, diagonalDistance1);
+                applyDistanceConstraint(cell.d, cell.f, timestep, diagonalDistance1);
+                applyDistanceConstraint(cell.f, cell.g, timestep, diagonalDistance1);
+                applyDistanceConstraint(cell.b, cell.e, timestep, diagonalDistance1);
 
                 //front face with back face
-                applyDistanceConstraint(cell.a, cell.e, timestep, space);
-                applyDistanceConstraint(cell.b, cell.f, timestep, space);
-                applyDistanceConstraint(cell.c, cell.g, timestep, space);
-                applyDistanceConstraint(cell.d, cell.h, timestep, space);
+                applyDistanceConstraint(cell.a, cell.e, timestep, spaceZ);
+                applyDistanceConstraint(cell.b, cell.f, timestep, spaceZ);
+                applyDistanceConstraint(cell.c, cell.g, timestep, spaceZ);
+                applyDistanceConstraint(cell.d, cell.h, timestep, spaceZ);
                 //diagonal between front and back face
-                applyDistanceConstraint(cell.a, cell.h, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.b, cell.g, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.c, cell.f, timestep, diagonalDistance);
-                applyDistanceConstraint(cell.e, cell.d, timestep, diagonalDistance);
+                applyDistanceConstraint(cell.a, cell.h, timestep, diagonalDistance2);
+                applyDistanceConstraint(cell.b, cell.g, timestep, diagonalDistance2);
+                applyDistanceConstraint(cell.c, cell.f, timestep, diagonalDistance2);
+                applyDistanceConstraint(cell.e, cell.d, timestep, diagonalDistance2);
             }
             //applying constriant for the polar opposites on the x axis;
             for (int z = 0; z < size; z++)
@@ -242,7 +253,7 @@ public class SpringyMesh : MonoBehaviour
                 {
                     int a = getIndex(0, y, z, size);
                     int b = getIndex(size - 1, y, z, size);
-                    applyDistanceConstraint(a, b, timestep, tipDistance);
+                    applyDistanceConstraint(a, b, timestep, tipDistanceX);
                 }
             }
             //applying constriant for the polar opposites on the y axis;
@@ -252,7 +263,7 @@ public class SpringyMesh : MonoBehaviour
                 {
                     int a = getIndex(x, 0, z, size);
                     int b = getIndex(x, size - 1, z, size);
-                    applyDistanceConstraint(a, b, timestep, tipDistance);
+                    applyDistanceConstraint(a, b, timestep, tipDistanceY);
                 }
             }
             //applying constriant for the polar opposites on the z axis;
@@ -262,7 +273,7 @@ public class SpringyMesh : MonoBehaviour
                 {
                     int a = getIndex(x, y, 0, size);
                     int b = getIndex(x, y, size - 1, size);
-                    applyDistanceConstraint(a, b, timestep, tipDistance);
+                    applyDistanceConstraint(a, b, timestep, tipDistanceZ);
                 }
             }
 
@@ -360,7 +371,7 @@ public class SpringyMesh : MonoBehaviour
         // foreach(MeshGrid meshGrid in meshGrids)
         // {
         //     Gizmos.color = Color.blue;
-        //     Gizmos.DrawSphere(meshVertices[meshGrid.meshVertex], 0.1f);
+        //     Gizmos.DrawSphere(meshVertices[meshGrid.meshVertex], 0.05f);
         // }
     }
 
@@ -408,7 +419,7 @@ public class SpringyMesh : MonoBehaviour
         }
     }
 
-    void createGrid(int maxDistance, int size, float space)
+    void createGrid(float distanceX, float distanceY, float distanceZ, int size, float spaceX, float spaceY, float spaceZ)
     {
         int index = 0;
         float k = 0f;
@@ -418,28 +429,28 @@ public class SpringyMesh : MonoBehaviour
         int j1 = 0;
         int i1 = 0;
 
-        while(k < maxDistance)
+        while(k < distanceZ)
         {
-            while(j < maxDistance)
+            while(j < distanceY)
             {
-                while(i < maxDistance)
+                while(i < distanceX)
                 {
                     index = getIndex(i1, j1, k1, size);
                     vertices[index] = new Vector3(i, j, k);
 
-                    i += space;
+                    i += spaceX;
                     i1 += 1;
                 }
                 i = 0f;
                 i1 = 0;
 
-                j += space;
+                j += spaceY;
                 j1 += 1;
             }
             j = 0f;
             j1 = 0;
 
-            k += space;
+            k += spaceZ;
             k1 += 1;
         }
     }
@@ -474,7 +485,7 @@ public class SpringyMesh : MonoBehaviour
         {
             //get the index of the cell that the meshVertex is in
             Vector3 pos = meshVertices[i];
-            Vector3 gridLoc = new Vector3(Mathf.Floor(pos.x / space), Mathf.Floor(pos.y / space), Mathf.Floor(pos.z / space));
+            Vector3 gridLoc = new Vector3(Mathf.Floor(pos.x / spaceX), Mathf.Floor(pos.y / spaceY), Mathf.Floor(pos.z / spaceZ));
             int index = getIndex((int)gridLoc.x, (int)gridLoc.y, (int)gridLoc.z, size - 1);
             //get u, v and w
             MeshGrid meshGrid = new MeshGrid(i, index, 0f, 0f, 0f);
@@ -541,11 +552,16 @@ public class SpringyMesh : MonoBehaviour
         max = tempMax;
     }
 
-    void getMaxDistance(Vector3 minX, Vector3 maxX, Vector3 minY, Vector3 maxY, Vector3 minZ, Vector3 maxZ, ref float maxDistance)
+    void getMaxDistance(Vector3 minX, Vector3 maxX, Vector3 minY, Vector3 maxY, Vector3 minZ, Vector3 maxZ, ref float maxDistance, ref float distanceX, ref float distanceY, ref float distanceZ)
     {
+        distanceX = Mathf.Ceil(Vector3.Magnitude(maxX - minX));
+        distanceY = Mathf.Ceil(Vector3.Magnitude(maxY - minY)) + 0.2f;
+        distanceZ = Mathf.Ceil(Vector3.Magnitude(maxZ - minZ)) + 0.2f;
+
         float disX = Vector3.Magnitude(maxX - minX);
         float disY = Vector3.Magnitude(maxY - minY);
         float disZ = Vector3.Magnitude(maxZ - minZ);
+
 
         float tempMaxDis = disX >= disY ? disX : disY;
         maxDistance = tempMaxDis >= disZ ? tempMaxDis : disZ;
