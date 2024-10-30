@@ -7,6 +7,7 @@ using System.Linq;
 public class SpringyMesh : MonoBehaviour
 {
     Vector3[] vertices;
+    Vector3[] springVertices;
     Vector3[] prevPos;
     Vector3[] velocity;
     Vector3[] acceleration;
@@ -23,12 +24,14 @@ public class SpringyMesh : MonoBehaviour
     public float spaceX;
     public float spaceY;
     public float spaceZ;
+    public float diagonalDistance1;
+    public float diagonalDistance2;
     public float tipDistanceX;
     public float tipDistanceY;
     public float tipDistanceZ;
-    public float diagonalDistance1;
-    public float diagonalDistance2;
-    [Range(1, 100)]
+    public float tipDiagonalDistance; // for different face
+    public float tipFaceDiagonalDistance;
+    [Range(6, 100)]
     public int iteration;
     public float timestep;
     public float pullStrength;
@@ -158,6 +161,7 @@ public class SpringyMesh : MonoBehaviour
 
         createGrid(distanceX, distanceY, distanceZ, size, spaceX, spaceY, spaceZ);
         attachCells();
+        springVertices = vertices;
 
         //getting additional distance constraints for the points that make up the cells and grid
         int a = cells[0].a;
@@ -167,12 +171,16 @@ public class SpringyMesh : MonoBehaviour
         diagonalDistance2 = Vector3.Magnitude(vertices[a] - vertices[h]);
         int origin = getIndex(0, 0, 0, size);
         int top = getIndex(0, size - 1, 0, size);
-        tipDistanceY = Vector3.Magnitude(vertices[top] - vertices[origin]);
         int right = getIndex(size - 1, 0, 0, size);
-        tipDistanceX = Vector3.Magnitude(vertices[right] - vertices[origin]);
         int front = getIndex(0, 0, size - 1, size);
+        int tipFaceDiagonal = getIndex(size-1, size-1, 0, size);
+        int tipDiagonal = getIndex(size-1, size-1, size-1, size); // for different faces
+        tipDistanceY = Vector3.Magnitude(vertices[top] - vertices[origin]);
+        tipDistanceX = Vector3.Magnitude(vertices[right] - vertices[origin]);
         tipDistanceZ = Vector3.Magnitude(vertices[front] - vertices[origin]);
-        
+        tipDiagonalDistance = Vector3.Magnitude(vertices[tipDiagonal] - vertices[origin]);
+        tipFaceDiagonalDistance = Vector3.Magnitude(vertices[tipFaceDiagonal] - vertices[origin]);
+
         attachMeshVertexToGridCell();
     }
 
@@ -221,12 +229,12 @@ public class SpringyMesh : MonoBehaviour
                 applyDistanceConstraint(cell.g, cell.h, timestep, spaceX);
 
                 //On the face diagonal
-                applyDistanceConstraint(cell.a, cell.d, timestep, diagonalDistance1);
-                applyDistanceConstraint(cell.e, cell.h, timestep, diagonalDistance1);
-                applyDistanceConstraint(cell.a, cell.g, timestep, diagonalDistance1);
-                applyDistanceConstraint(cell.b, cell.h, timestep, diagonalDistance1);
-                applyDistanceConstraint(cell.c, cell.h, timestep, diagonalDistance1);
-                applyDistanceConstraint(cell.a, cell.f, timestep, diagonalDistance1);
+                // applyDistanceConstraint(cell.a, cell.d, timestep, diagonalDistance1);
+                // applyDistanceConstraint(cell.e, cell.h, timestep, diagonalDistance1);
+                // applyDistanceConstraint(cell.a, cell.g, timestep, diagonalDistance1);
+                // applyDistanceConstraint(cell.b, cell.h, timestep, diagonalDistance1);
+                // applyDistanceConstraint(cell.c, cell.h, timestep, diagonalDistance1);
+                // applyDistanceConstraint(cell.a, cell.f, timestep, diagonalDistance1);
                 //additional diagonal for a face
                 applyDistanceConstraint(cell.c, cell.b, timestep, diagonalDistance1);
                 applyDistanceConstraint(cell.c, cell.e, timestep, diagonalDistance1);
@@ -276,6 +284,36 @@ public class SpringyMesh : MonoBehaviour
                     applyDistanceConstraint(a, b, timestep, tipDistanceZ);
                 }
             }
+
+            int frontBottomLeft = getIndex(0, 0, 0, size);
+            int frontTopLeft = getIndex(0, size-1, 0, size);
+            int frontTopRight = getIndex(size-1, size-1, 0, size);
+            int frontBottomRight = getIndex(size-1, 0, 0, size);
+            int backBottomLeft = getIndex(0, 0, size-1, size);
+            int backTopLeft = getIndex(0, size-1, size-1, size);
+            int backTopRight = getIndex(size-1, size-1, size-1, size);
+            int backBottomRight = getIndex(size-1, 0, size-1, size);
+            //On different faces diagonal
+            applyDistanceConstraint(frontBottomLeft, backTopRight, timestep, tipDiagonalDistance);
+            applyDistanceConstraint(frontBottomRight, backTopLeft, timestep, tipDiagonalDistance);
+            applyDistanceConstraint(frontTopLeft, backBottomRight, timestep, tipDiagonalDistance);
+            applyDistanceConstraint(frontTopRight, backBottomLeft, timestep, tipDiagonalDistance);
+            //On the face diagonal
+            applyDistanceConstraint(frontBottomLeft, frontTopRight, timestep, tipFaceDiagonalDistance);
+            applyDistanceConstraint(backBottomLeft, backTopRight, timestep, tipFaceDiagonalDistance);
+            applyDistanceConstraint(frontBottomLeft, backTopLeft, timestep, tipFaceDiagonalDistance);
+            applyDistanceConstraint(frontBottomRight, backTopRight, timestep, tipFaceDiagonalDistance);
+            applyDistanceConstraint(frontTopLeft, backTopRight, timestep, tipFaceDiagonalDistance);
+            applyDistanceConstraint(frontBottomLeft, backBottomRight, timestep, tipFaceDiagonalDistance);
+            //additional diagonal for a face
+            applyDistanceConstraint(frontTopLeft, frontBottomRight, timestep, tipFaceDiagonalDistance);
+            applyDistanceConstraint(frontTopLeft, backBottomLeft, timestep, tipFaceDiagonalDistance);
+            applyDistanceConstraint(frontTopRight, backTopLeft, timestep, tipFaceDiagonalDistance);
+            applyDistanceConstraint(frontTopRight, backBottomRight, timestep, tipFaceDiagonalDistance);
+            applyDistanceConstraint(backBottomRight, backTopLeft, timestep, tipFaceDiagonalDistance);
+            applyDistanceConstraint(frontBottomRight, backBottomLeft, timestep, tipFaceDiagonalDistance);
+
+            
 
             //under the floor
             for (int j = 0; j < vertices.Length; j++)
@@ -351,6 +389,20 @@ public class SpringyMesh : MonoBehaviour
         vertices[v1] += forceVector * deltaTime;
     }
 
+    void applyDistanceConstraint(int v1, float deltaTime, float distance_)
+    {
+        Vector3 p1 = springVertices[v1];
+        Vector3 p2 = vertices[v1];
+
+        Vector3 direction = p2 - p1;
+        float currDis = direction.magnitude;
+
+        float force = currDis - distance_;
+        Vector3 forceVector = force * direction.normalized;
+
+        springVertices[v1] += forceVector * deltaTime;
+    }
+
 
     void OnDrawGizmos()
     {
@@ -362,6 +414,7 @@ public class SpringyMesh : MonoBehaviour
             Gizmos.color = Color.green;
             Gizmos.DrawSphere(vertices[i], 0.05f);
         }
+
         // for (int i = 0; i < cells.Count(); i++)
         // {
         //     Gizmos.color = Color.red;
@@ -435,6 +488,11 @@ public class SpringyMesh : MonoBehaviour
             {
                 while(i < distanceX)
                 {
+                    //safe guard
+                    i1 = i1 < size ? i1 : size-1;
+                    j1 = j1 < size ? j1 : size-1;
+                    k1 = k1 < size ? k1 : size-1;
+                    
                     index = getIndex(i1, j1, k1, size);
                     vertices[index] = new Vector3(i, j, k);
 
@@ -486,6 +544,12 @@ public class SpringyMesh : MonoBehaviour
             //get the index of the cell that the meshVertex is in
             Vector3 pos = meshVertices[i];
             Vector3 gridLoc = new Vector3(Mathf.Floor(pos.x / spaceX), Mathf.Floor(pos.y / spaceY), Mathf.Floor(pos.z / spaceZ));
+
+            //safe guard
+            gridLoc.x = gridLoc.x > size-1 ? size-1 : gridLoc.x < 0 ? 0 : gridLoc.x;
+            gridLoc.y = gridLoc.y > size-1 ? size-1 : gridLoc.y < 0 ? 0 : gridLoc.y;
+            gridLoc.z = gridLoc.z > size-1 ? size-1 : gridLoc.z < 0 ? 0 : gridLoc.z;
+
             int index = getIndex((int)gridLoc.x, (int)gridLoc.y, (int)gridLoc.z, size - 1);
             //get u, v and w
             MeshGrid meshGrid = new MeshGrid(i, index, 0f, 0f, 0f);
@@ -554,9 +618,9 @@ public class SpringyMesh : MonoBehaviour
 
     void getMaxDistance(Vector3 minX, Vector3 maxX, Vector3 minY, Vector3 maxY, Vector3 minZ, Vector3 maxZ, ref float maxDistance, ref float distanceX, ref float distanceY, ref float distanceZ)
     {
-        distanceX = Mathf.Ceil(Vector3.Magnitude(maxX - minX));
-        distanceY = Mathf.Ceil(Vector3.Magnitude(maxY - minY)) + 0.2f;
-        distanceZ = Mathf.Ceil(Vector3.Magnitude(maxZ - minZ)) + 0.2f;
+        distanceX = Mathf.Ceil(Vector3.Magnitude(maxX - minX)) + 0.3f;
+        distanceY = Mathf.Ceil(Vector3.Magnitude(maxY - minY)) + 0.3f;
+        distanceZ = Mathf.Ceil(Vector3.Magnitude(maxZ - minZ)) + 0.3f;
 
         float disX = Vector3.Magnitude(maxX - minX);
         float disY = Vector3.Magnitude(maxY - minY);
