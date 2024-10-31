@@ -7,7 +7,6 @@ using System.Linq;
 public class SpringyMesh : MonoBehaviour
 {
     Vector3[] vertices;
-    Vector3[] springVertices;
     Vector3[] prevPos;
     Vector3[] velocity;
     Vector3[] acceleration;
@@ -161,7 +160,6 @@ public class SpringyMesh : MonoBehaviour
 
         createGrid(distanceX, distanceY, distanceZ, size, spaceX, spaceY, spaceZ);
         attachCells();
-        springVertices = vertices;
 
         //getting additional distance constraints for the points that make up the cells and grid
         int a = cells[0].a;
@@ -173,8 +171,8 @@ public class SpringyMesh : MonoBehaviour
         int top = getIndex(0, size - 1, 0, size);
         int right = getIndex(size - 1, 0, 0, size);
         int front = getIndex(0, 0, size - 1, size);
-        int tipFaceDiagonal = getIndex(size-1, size-1, 0, size);
-        int tipDiagonal = getIndex(size-1, size-1, size-1, size); // for different faces
+        int tipFaceDiagonal = getIndex(size - 1, size - 1, 0, size);
+        int tipDiagonal = getIndex(size - 1, size - 1, size - 1, size); // for different faces
         tipDistanceY = Vector3.Magnitude(vertices[top] - vertices[origin]);
         tipDistanceX = Vector3.Magnitude(vertices[right] - vertices[origin]);
         tipDistanceZ = Vector3.Magnitude(vertices[front] - vertices[origin]);
@@ -286,13 +284,13 @@ public class SpringyMesh : MonoBehaviour
             }
 
             int frontBottomLeft = getIndex(0, 0, 0, size);
-            int frontTopLeft = getIndex(0, size-1, 0, size);
-            int frontTopRight = getIndex(size-1, size-1, 0, size);
-            int frontBottomRight = getIndex(size-1, 0, 0, size);
-            int backBottomLeft = getIndex(0, 0, size-1, size);
-            int backTopLeft = getIndex(0, size-1, size-1, size);
-            int backTopRight = getIndex(size-1, size-1, size-1, size);
-            int backBottomRight = getIndex(size-1, 0, size-1, size);
+            int frontTopLeft = getIndex(0, size - 1, 0, size);
+            int frontTopRight = getIndex(size - 1, size - 1, 0, size);
+            int frontBottomRight = getIndex(size - 1, 0, 0, size);
+            int backBottomLeft = getIndex(0, 0, size - 1, size);
+            int backTopLeft = getIndex(0, size - 1, size - 1, size);
+            int backTopRight = getIndex(size - 1, size - 1, size - 1, size);
+            int backBottomRight = getIndex(size - 1, 0, size - 1, size);
             //On different faces diagonal
             applyDistanceConstraint(frontBottomLeft, backTopRight, timestep, tipDiagonalDistance);
             applyDistanceConstraint(frontBottomRight, backTopLeft, timestep, tipDiagonalDistance);
@@ -313,7 +311,7 @@ public class SpringyMesh : MonoBehaviour
             applyDistanceConstraint(backBottomRight, backTopLeft, timestep, tipFaceDiagonalDistance);
             applyDistanceConstraint(frontBottomRight, backBottomLeft, timestep, tipFaceDiagonalDistance);
 
-            
+
 
             //under the floor
             for (int j = 0; j < vertices.Length; j++)
@@ -342,7 +340,8 @@ public class SpringyMesh : MonoBehaviour
         {
             meshGrid.maintainPosition(ref cells, ref vertices, ref meshVertices);
         }
-        for(int i = 0; i < meshVertices.Length; i++){
+        for (int i = 0; i < meshVertices.Length; i++)
+        {
             meshV[i] = meshObject.transform.InverseTransformPoint(meshVertices[i]);
         }
         meshObject.GetComponent<MeshFilter>().mesh.vertices = meshV;
@@ -388,21 +387,6 @@ public class SpringyMesh : MonoBehaviour
 
         vertices[v1] += forceVector * deltaTime;
     }
-
-    void applyDistanceConstraint(int v1, float deltaTime, float distance_)
-    {
-        Vector3 p1 = springVertices[v1];
-        Vector3 p2 = vertices[v1];
-
-        Vector3 direction = p2 - p1;
-        float currDis = direction.magnitude;
-
-        float force = currDis - distance_;
-        Vector3 forceVector = force * direction.normalized;
-
-        springVertices[v1] += forceVector * deltaTime;
-    }
-
 
     void OnDrawGizmos()
     {
@@ -475,41 +459,47 @@ public class SpringyMesh : MonoBehaviour
     void createGrid(float distanceX, float distanceY, float distanceZ, int size, float spaceX, float spaceY, float spaceZ)
     {
         int index = 0;
-        float k = 0f;
-        float j = 0f;
-        float i = 0f;
-        int k1 = 0;
-        int j1 = 0;
-        int i1 = 0;
+        //components of the point position
+        float k = minZ.z - 0.1f;
+        float j = minY.y - 0.1f;
+        float i = minX.x - 0.1f;
+        //........
+        float dz = k + distanceZ;
+        float dy = j + distanceY;
+        float dx = i + distanceX;
+        //components of the point grid location
+        int ki = 0;
+        int ji = 0;
+        int ii = 0;
 
-        while(k < distanceZ)
+        while (k < dz)
         {
-            while(j < distanceY)
+            while (j < dy)
             {
-                while(i < distanceX)
+                while (i < dx)
                 {
                     //safe guard
-                    i1 = i1 < size ? i1 : size-1;
-                    j1 = j1 < size ? j1 : size-1;
-                    k1 = k1 < size ? k1 : size-1;
-                    
-                    index = getIndex(i1, j1, k1, size);
+                    ii = ii < size ? ii : size - 1;
+                    ji = ji < size ? ji : size - 1;
+                    ki = ki < size ? ki : size - 1;
+
+                    index = getIndex(ii, ji, ki, size);
                     vertices[index] = new Vector3(i, j, k);
 
                     i += spaceX;
-                    i1 += 1;
+                    ii += 1;
                 }
-                i = 0f;
-                i1 = 0;
+                i = minX.x - 0.1f;
+                ii = 0;
 
                 j += spaceY;
-                j1 += 1;
+                ji += 1;
             }
-            j = 0f;
-            j1 = 0;
+            j = minY.y - 0.1f;
+            ji = 0;
 
             k += spaceZ;
-            k1 += 1;
+            ki += 1;
         }
     }
 
@@ -543,12 +533,13 @@ public class SpringyMesh : MonoBehaviour
         {
             //get the index of the cell that the meshVertex is in
             Vector3 pos = meshVertices[i];
+            pos = pos - new Vector3(minX.x - 0.1f, minY.y - 0.1f, minZ.z - 0.1f);
             Vector3 gridLoc = new Vector3(Mathf.Floor(pos.x / spaceX), Mathf.Floor(pos.y / spaceY), Mathf.Floor(pos.z / spaceZ));
 
             //safe guard
-            gridLoc.x = gridLoc.x > size-1 ? size-1 : gridLoc.x < 0 ? 0 : gridLoc.x;
-            gridLoc.y = gridLoc.y > size-1 ? size-1 : gridLoc.y < 0 ? 0 : gridLoc.y;
-            gridLoc.z = gridLoc.z > size-1 ? size-1 : gridLoc.z < 0 ? 0 : gridLoc.z;
+            gridLoc.x = gridLoc.x > size - 1 ? size - 1 : gridLoc.x < 0 ? 0 : gridLoc.x;
+            gridLoc.y = gridLoc.y > size - 1 ? size - 1 : gridLoc.y < 0 ? 0 : gridLoc.y;
+            gridLoc.z = gridLoc.z > size - 1 ? size - 1 : gridLoc.z < 0 ? 0 : gridLoc.z;
 
             int index = getIndex((int)gridLoc.x, (int)gridLoc.y, (int)gridLoc.z, size - 1);
             //get u, v and w
@@ -571,21 +562,21 @@ public class SpringyMesh : MonoBehaviour
     void getMin(ref Vector3[] vertices, ref Vector3 min, int mode)
     {
         Vector3 tempMin = new Vector3(1000f, 1000f, 1000f);
-        foreach(Vector3 v in vertices)
+        foreach (Vector3 v in vertices)
         {
-            if(mode == 0)
+            if (mode == 0)
             {
-                if(v.x < tempMin.x)
+                if (v.x < tempMin.x)
                     tempMin = v;
             }
-            if(mode == 1)
+            if (mode == 1)
             {
-                if(v.y < tempMin.y)
+                if (v.y < tempMin.y)
                     tempMin = v;
             }
-            if(mode == 2)
+            if (mode == 2)
             {
-                if(v.z < tempMin.z)
+                if (v.z < tempMin.z)
                     tempMin = v;
             }
         }
@@ -595,21 +586,21 @@ public class SpringyMesh : MonoBehaviour
     void getMax(ref Vector3[] vertices, ref Vector3 max, int mode)
     {
         Vector3 tempMax = new Vector3(-1000f, -1000f, -1000f);
-        foreach(Vector3 v in vertices)
+        foreach (Vector3 v in vertices)
         {
-            if(mode == 0)
+            if (mode == 0)
             {
-                if(v.x > tempMax.x)
+                if (v.x > tempMax.x)
                     tempMax = v;
             }
-            if(mode == 1)
+            if (mode == 1)
             {
-                if(v.y > tempMax.y)
+                if (v.y > tempMax.y)
                     tempMax = v;
             }
-            if(mode == 2)
+            if (mode == 2)
             {
-                if(v.z > tempMax.z)
+                if (v.z > tempMax.z)
                     tempMax = v;
             }
         }
@@ -618,9 +609,9 @@ public class SpringyMesh : MonoBehaviour
 
     void getMaxDistance(Vector3 minX, Vector3 maxX, Vector3 minY, Vector3 maxY, Vector3 minZ, Vector3 maxZ, ref float maxDistance, ref float distanceX, ref float distanceY, ref float distanceZ)
     {
-        distanceX = Mathf.Ceil(Vector3.Magnitude(maxX - minX)) + 0.3f;
-        distanceY = Mathf.Ceil(Vector3.Magnitude(maxY - minY)) + 0.3f;
-        distanceZ = Mathf.Ceil(Vector3.Magnitude(maxZ - minZ)) + 0.3f;
+        distanceX = Vector3.Magnitude(maxX - minX) + 1f;
+        distanceY = Vector3.Magnitude(maxY - minY) + 0.6f;
+        distanceZ = Vector3.Magnitude(maxZ - minZ) + 0.6f;
 
         float disX = Vector3.Magnitude(maxX - minX);
         float disY = Vector3.Magnitude(maxY - minY);
