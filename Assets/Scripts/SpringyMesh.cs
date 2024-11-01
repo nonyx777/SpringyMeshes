@@ -38,6 +38,7 @@ public class SpringyMesh : MonoBehaviour
 
     Vector3 minX, maxX, minY, maxY, minZ, maxZ;
     public float maxDistance, distanceX, distanceY, distanceZ;
+    public float gridOffset = 0.85f;
 
     public class Cell
     {
@@ -560,7 +561,7 @@ public class SpringyMesh : MonoBehaviour
             MeshGrid meshGrid = new MeshGrid(i, index, 0f, 0f, 0f);
             if (index < 0 || index >= cells.Length)
             {
-                Debug.LogError($"Invalid index: {index}, cells array size: {cells.Length}");
+                Debug.LogError($"Invalid index: {index}, cells array size: {cells.Length} \n Please adjust gridOffset to cover the whole of the mesh");
                 return;
             }
 
@@ -623,9 +624,9 @@ public class SpringyMesh : MonoBehaviour
 
     void getMaxDistance(Vector3 minX, Vector3 maxX, Vector3 minY, Vector3 maxY, Vector3 minZ, Vector3 maxZ, ref float maxDistance, ref float distanceX, ref float distanceY, ref float distanceZ)
     {
-        distanceX = Vector3.Magnitude(maxX - minX) + 0.85f;
-        distanceY = Vector3.Magnitude(maxY - minY) + 0.85f;
-        distanceZ = Vector3.Magnitude(maxZ - minZ) + 0.85f;
+        distanceX = Vector3.Magnitude(maxX - minX) + gridOffset;
+        distanceY = Vector3.Magnitude(maxY - minY) + gridOffset;
+        distanceZ = Vector3.Magnitude(maxZ - minZ) + gridOffset;
 
         distanceX = Mathf.Round(distanceX * 100f) * 0.01f;
         distanceY = Mathf.Round(distanceY * 100f) * 0.01f;
