@@ -37,7 +37,7 @@ public class SpringyMesh : MonoBehaviour
     Vector3 gravity = new Vector3(0, -9.8f, 0);
 
     Vector3 minX, maxX, minY, maxY, minZ, maxZ;
-    float maxDistance, distanceX, distanceY, distanceZ;
+    public float maxDistance, distanceX, distanceY, distanceZ;
 
     public class Cell
     {
@@ -158,6 +158,10 @@ public class SpringyMesh : MonoBehaviour
         spaceY = distanceY / size;
         spaceZ = distanceZ / size;
 
+        spaceX = Mathf.Round(spaceX * 100f) * 0.01f;
+        spaceY = Mathf.Round(spaceY * 100f) * 0.01f;
+        spaceZ = Mathf.Round(spaceZ * 100f) * 0.01f;
+
         createGrid(distanceX, distanceY, distanceZ, size, spaceX, spaceY, spaceZ);
         attachCells();
 
@@ -167,17 +171,27 @@ public class SpringyMesh : MonoBehaviour
         int h = cells[0].h;
         diagonalDistance1 = Vector3.Magnitude(vertices[a] - vertices[d]);
         diagonalDistance2 = Vector3.Magnitude(vertices[a] - vertices[h]);
+        diagonalDistance1 = Mathf.Round(diagonalDistance1 * 100f) * 0.01f;
+        diagonalDistance2 = Mathf.Round(diagonalDistance2 * 100f) * 0.01f;
+
         int origin = getIndex(0, 0, 0, size);
         int top = getIndex(0, size - 1, 0, size);
         int right = getIndex(size - 1, 0, 0, size);
         int front = getIndex(0, 0, size - 1, size);
         int tipFaceDiagonal = getIndex(size - 1, size - 1, 0, size);
         int tipDiagonal = getIndex(size - 1, size - 1, size - 1, size); // for different faces
-        tipDistanceY = Vector3.Magnitude(vertices[top] - vertices[origin]);
         tipDistanceX = Vector3.Magnitude(vertices[right] - vertices[origin]);
+        tipDistanceY = Vector3.Magnitude(vertices[top] - vertices[origin]);
         tipDistanceZ = Vector3.Magnitude(vertices[front] - vertices[origin]);
+        tipDistanceX = Mathf.Round(tipDistanceX * 100f) * 0.01f;
+        tipDistanceY = Mathf.Round(tipDistanceY * 100f) * 0.01f;
+        tipDistanceZ = Mathf.Round(tipDistanceZ * 100f) * 0.01f;
+        
         tipDiagonalDistance = Vector3.Magnitude(vertices[tipDiagonal] - vertices[origin]);
         tipFaceDiagonalDistance = Vector3.Magnitude(vertices[tipFaceDiagonal] - vertices[origin]);
+        tipDiagonalDistance = Mathf.Round(tipDiagonalDistance * 100f) * 0.01f;
+        tipFaceDiagonalDistance = Mathf.Round(tipFaceDiagonalDistance * 100f) * 0.01f;
+
 
         attachMeshVertexToGridCell();
     }
@@ -395,7 +409,7 @@ public class SpringyMesh : MonoBehaviour
 
         for (int i = 0; i < vertices.Count(); i++)
         {
-            Gizmos.color = Color.green;
+            Gizmos.color = Color.red;
             Gizmos.DrawSphere(vertices[i], 0.05f);
         }
 
@@ -458,11 +472,11 @@ public class SpringyMesh : MonoBehaviour
 
     void createGrid(float distanceX, float distanceY, float distanceZ, int size, float spaceX, float spaceY, float spaceZ)
     {
-        int index = 0;
+        int index;
         //components of the point position
-        float k = minZ.z - 0.1f;
-        float j = minY.y - 0.1f;
-        float i = minX.x - 0.1f;
+        float k = minZ.z;
+        float j = minY.y;
+        float i = minX.x;
         //........
         float dz = k + distanceZ;
         float dy = j + distanceY;
@@ -489,13 +503,13 @@ public class SpringyMesh : MonoBehaviour
                     i += spaceX;
                     ii += 1;
                 }
-                i = minX.x - 0.1f;
+                i = minX.x;
                 ii = 0;
 
                 j += spaceY;
                 ji += 1;
             }
-            j = minY.y - 0.1f;
+            j = minY.y;
             ji = 0;
 
             k += spaceZ;
@@ -533,7 +547,7 @@ public class SpringyMesh : MonoBehaviour
         {
             //get the index of the cell that the meshVertex is in
             Vector3 pos = meshVertices[i];
-            pos = pos - new Vector3(minX.x - 0.1f, minY.y - 0.1f, minZ.z - 0.1f);
+            pos = pos - new Vector3(minX.x, minY.y, minZ.z);
             Vector3 gridLoc = new Vector3(Mathf.Floor(pos.x / spaceX), Mathf.Floor(pos.y / spaceY), Mathf.Floor(pos.z / spaceZ));
 
             //safe guard
@@ -609,9 +623,13 @@ public class SpringyMesh : MonoBehaviour
 
     void getMaxDistance(Vector3 minX, Vector3 maxX, Vector3 minY, Vector3 maxY, Vector3 minZ, Vector3 maxZ, ref float maxDistance, ref float distanceX, ref float distanceY, ref float distanceZ)
     {
-        distanceX = Vector3.Magnitude(maxX - minX) + 1f;
-        distanceY = Vector3.Magnitude(maxY - minY) + 0.6f;
-        distanceZ = Vector3.Magnitude(maxZ - minZ) + 0.6f;
+        distanceX = Vector3.Magnitude(maxX - minX) + 0.85f;
+        distanceY = Vector3.Magnitude(maxY - minY) + 0.85f;
+        distanceZ = Vector3.Magnitude(maxZ - minZ) + 0.85f;
+
+        distanceX = Mathf.Round(distanceX * 100f) * 0.01f;
+        distanceY = Mathf.Round(distanceY * 100f) * 0.01f;
+        distanceZ = Mathf.Round(distanceZ * 100f) * 0.01f;
 
         float disX = Vector3.Magnitude(maxX - minX);
         float disY = Vector3.Magnitude(maxY - minY);
